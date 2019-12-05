@@ -42,7 +42,7 @@ class VOCClassSegBase(data.Dataset):
         self.files = collections.defaultdict(list)
         for split_file in ['train', 'val']:
             file_name = os.path.join(data_pth, 'ImageSets/Segmentation/%s.txt' % split_file)
-            for img_name in file_name:
+            for img_name in open(file_name):
                 img_name = img_name.strip()
                 img_file = os.path.join(data_pth, 'JPEGImages/%s.jpg' % img_name)
                 lbl_file = os.path.join(data_pth, 'SegmentationClass/%s.png' % img_name)
@@ -70,19 +70,18 @@ class VOCClassSegBase(data.Dataset):
             return self.transform(img, lbl)
         else:
             return img, lbl
-        
     def transform(self, img, lbl):
         img = img[:, :, ::-1]    # RGB - > BGR
         img = img.astype(np.float64)
         img -= self.mean
         img = img.transpose(2, 0, 1)  # whc -> cwh
         img = torch.from_numpy(img).float()
-        lbl = torch.from_numpy(img).long()
+        lbl = torch.from_numpy(lbl).long()
         return img, lbl
 
     def resize(self, img, lbl, s=320):
         img = cv.resize(img, (s, s), interpolation=cv.INTER_LINEAR)
-        label = cv.resize(img, (s, s), interpolation=cv.INTER_NEAREST)
+        label = cv.resize(lbl, (s, s), interpolation=cv.INTER_NEAREST)
         return img, label
 
     def randomFlip(self, img, lbl):
@@ -107,4 +106,4 @@ class VOCClassSegBase(data.Dataset):
 
 class VOC2012ClassSeg(VOCClassSegBase):
     def __init__(self, root, split='train', transform=False):
-        super(VOCClassSegBase, self).__init__(root, split=split, transform=transform)
+        super(VOC2012ClassSeg, self).__init__(root, split=split, transform=transform)
