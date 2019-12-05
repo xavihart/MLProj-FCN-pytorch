@@ -70,6 +70,7 @@ class VOCClassSegBase(data.Dataset):
             return self.transform(img, lbl)
         else:
             return img, lbl
+        
     def transform(self, img, lbl):
         img = img[:, :, ::-1]    # RGB - > BGR
         img = img.astype(np.float64)
