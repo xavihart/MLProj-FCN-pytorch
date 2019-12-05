@@ -97,9 +97,9 @@ class FCN8s(nn.Module):
         x5 = output['x5']
         x4 = output['x4']
         x3 = output['x3']
-        print(x5.shape)
+        #print(x5.shape)
         score = self.relu(self.deconv1(x5))   #[n, 512, x.h/16, x.w/16]
-        print(score.shape)
+        #print(score.shape)
         score = self.bn1(score + x4)
         score = self.relu(self.deconv2(score))   # [, , /8, /8]
         score = self.bn2(score + x3)
