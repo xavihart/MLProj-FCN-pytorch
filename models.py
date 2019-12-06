@@ -1,120 +1,149 @@
-from __future__ import print_function
+import os
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torchvision import models
-from torchvision.models.vgg import VGG
-import torch.nn.functional as F
-from torch.nn import init
+from torch.autograd import Variable
+import torch.utils.data.dataloader
 import numpy as np
+import torchvision
+import models
+import voc_base
+from torch.optim import Adam, SGD
+from argparse import ArgumentParser
+import tool_lib
+import torch.nn as nn
+import torch.nn.functional as F
+import  matplotlib.pylab as plt
+import time
+
+time_start = time.time()
 
 
-model_dict = {
-    'vgg11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    'vgg13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    'vgg16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
-    'vgg19': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
-}
+class CrossEntropyLoss2d(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(CrossEntropyLoss2d, self).__init__()
+        self.nll_loss = nn.NLLLoss2d(weight, size_average)
+    def forward(self, inputs, targets):
+        return self.nll_loss(F.log_softmax(inputs), targets)
 
 
-ranges = {
-    'vgg11': ((0, 3), (3, 6),  (6, 11),  (11, 16), (16, 21)),
-    'vgg13': ((0, 5), (5, 10), (10, 15), (15, 20), (20, 25)),
-    'vgg16': ((0, 5), (5, 10), (10, 17), (17, 24), (24, 31)),
-    'vgg19': ((0, 5), (5, 10), (10, 19), (19, 28), (28, 37))
-}
-
-def make_layers(model_dict, batch_norm=False):
-    """
-
-    :param model_dict: model_dict['vgg16']
-    :param batch_norm:
-    :return: numer means conv , M means pooling
-    """
-    layers = []
-    in_channels = 3
-    for v in model_dict:
-        if v == "M":
-            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
-        else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
-            if batch_norm:
-                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
-            else:
-                layers += [conv2d, nn.ReLU(inplace=True)]
-            in_channels = v
-    return nn.Sequential(*layers)
+parser = ArgumentParser()
+parser.add_argument('-bs', '--batch_size', type=int, default=2, help="batch size of the data")
+parser.add_argument('-e', '--epochs', type=int, default=300, help='epoch of the train')
+parser.add_argument('-c', '--n_class', type=int, default=21, help='the classes of the dataset')
+parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3, help='learning rate')
+parser.add_argument('-d', '--device', type=str, default=2, help='setting cuda devices')
+args = parser.parse_args()
 
 
-class VGGNET(VGG):
-    def __init__(self, pretrained=True, model='vgg16', requires_grad=True, remove_fc=True, show_param=False):
-        super().__init__(make_layers(model_dict[model]))
-        self.ranges = ranges[model]
-        if pretrained:
-            vgg16 = models.vgg16(pretrained=True)
-        if not requires_grad:
-            for p in super().parameters():
-                p.requires_grad = False
-        if remove_fc:
-            del self.classifier
+batch_size = args.batch_size
+learning_rate = args.learning_rate
+epoch_num = args.epochs
+n_class = args.n_class
+device = args.device
+best_test_loss = np.inf
 
-        if show_param:
-            for name, p in self.named_parameters():
-                print(name, p.size())
-    def forward(self, x):
-        output = {}
-        for idx in range(len(self.ranges)):
-            for layer in range(self.ranges[idx][0], self.ranges[idx][1]):
-                x = self.features[layer](x)
-            output["x%d" % (idx + 1)] = x
-        return output
+data_pth = os.path.join(os.getcwd(), '..', '..', 'zhanghao/interpretable_method_eval/data')
+print(data_pth)
 
-class FCN8s(nn.Module):
-    def __init__(self, pretrained_net, n_class):
-        super().__init__()
-        self.n_class = n_class
-        self.pretrained_net = pretrained_net
-        self.relu = nn.ReLU(inplace=True)
-        self.deconv1 = nn.ConvTranspose2d(512, 512, kernel_size=3, stride=2, padding=1, dilation=1, output_padding=1)
-        self.bn1 = nn.BatchNorm2d(512)
-        self.deconv2 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, dilation=1, output_padding=1)
-        self.bn2 = nn.BatchNorm2d(256)
-        self.deconv3 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, dilation=1, output_padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.deconv4 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, dilation=1, output_padding=1)
-        self.bn4 = nn.BatchNorm2d(64)
-        self.deconv5 = nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, dilation=1, output_padding=1)
-        self.bn5 = nn.BatchNorm2d(32)
-        self.classifier = nn.Conv2d(32, n_class, kernel_size=1)
-        init.xavier_uniform(self.deconv1.weight)
-        init.xavier_uniform(self.deconv2.weight)
-        init.xavier_uniform(self.deconv3.weight)
-        init.xavier_uniform(self.deconv4.weight)
-        init.xavier_uniform(self.deconv5.weight)
-        init.xavier_uniform(self.classifier.weight)
-    def forward(self, x):
-        output = self.pretrained_net(x)
-        x5 = output['x5']
-        x4 = output['x4']
-        x3 = output['x3']
-        #print(x5.shape)
-        score = self.relu(self.deconv1(x5))   #[n, 512, x.h/16, x.w/16]
-        #print(score.shape)
-        score = self.bn1(score + x4)
-        score = self.relu(self.deconv2(score))   # [, , /8, /8]
-        score = self.bn2(score + x3)
-        score = self.bn3(self.relu(self.deconv3(score)))  #[, , /4, /4]
-        score = self.bn4(self.relu(self.deconv4(score)))   #[, , /2, /2]
-        score = self.bn5(self.relu(self.deconv5(score)))   #[n, 32, , w, h]
-        score = self.classifier(score)          #[, classed, w, d]
-        return score
+train_data = voc_base.VOC2012ClassSeg(root=data_pth, split='train', transform=True)
+train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=5)
+val_data = voc_base.VOC2012ClassSeg(root=data_pth, split='val', transform=True)
+val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=5)
+
+
+vgg_model = models.VGGNET(requires_grad=True)
+fcn_net = models.FCN8s(pretrained_net=vgg_model, n_class=n_class)
+
+criterion = CrossEntropyLoss2d()
+optimizer = Adam(fcn_net.parameters())
+epoch_loss_list = []
+epoch_test_loss_list = []
+
+def train(epoch):
+    fcn_net.to(device)
+    fcn_net.train()
+    tot_loss = 0.0
+    for batch_index, (img, lbl) in enumerate(train_loader):
+        N = img.size(0)  # numbers of img in a batch
+        #assert N == batch_size
+        img = Variable(img)
+        lbl = Variable(lbl)
+        img = img.to(device)
+        lbl = lbl.to(device)
+        out = fcn_net(img)
+        loss = criterion(out, lbl)
+        loss /= N
+        #print("test1", tot_loss / len(train_loader))                        #flag1
+        tot_loss += loss.data
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if batch_index % 3 == 0:
+            print("epoch:%d " % (epoch), "batch:%d " % (batch_index), "avg_loss:{}".format(tot_loss / (batch_index + 1)))
+    assert tot_loss is not np.inf
+    assert tot_loss is not np.nan
+    epoch_loss_list.append(tot_loss.data / len(train_loader))
+    if epoch % 10 == 0:                                                           #flag2
+        torch.save(fcn_net.state_dict(), './result/pretrained_model_epoch%d.pth' % (epoch))
+        print("saved successfully" + "--" * 5)
+
+def test(epoch):
+    fcn_net.to(device)
+    fcn_net.eval()
+    tot_loss = 0.0
+    num = len(val_loader)
+    for btch_index, (img, lbl) in enumerate(val_loader):
+        N = img.size(0)
+        img = Variable(img)
+        lbl = Variable(lbl)
+        img = img.to(device)
+        lbl = lbl.to(device)
+        out = fcn_net(img)
+        loss = criterion(out, lbl)
+        loss /= N
+        if loss >= 50:
+            num -= 1
+            continue
+        tot_loss += loss.data
+        if btch_index % 10 == 0:
+            print("testing process in epoch%d, loss:{%f}"%(epoch, loss))
+    tot_loss /= num
+    print("epoch%d: [avg loss: %f]" % (epoch, tot_loss))
+    epoch_test_loss_list.append(tot_loss)
 
 
 if __name__ == "__main__":
-    # testing the model
-    net = VGGNET(model='vgg16', requires_grad=True, show_param=True)
-    FCN = FCN8s(pretrained_net=net, n_class=20)
-    x = FCN(torch.rand(1, 3, 320, 320))
-    print(x.shape)
+    for epoch in range(epoch_num):
+        train(epoch)
+        test(epoch)
+        if epoch == 20:
+            learning_rate *= 0.01
+            optimizer.param_groups[0]['lr'] = learning_rate
+    plt.plot(epoch_loss_list, label='training loss')
+    plt.plot(epoch_test_loss_list, label='testing loss')
+    plt.xlabel("epoch")
+    plt.ylabel("epoch avg loss")
+    plt.title("training loss curve")
+    plt.legend()
+    plt.savefig('./result/curve.jpg')
+    plt.show()
+    print("time comsumed:", time.time() - time_start)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
