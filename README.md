@@ -3,4 +3,6 @@
 
  *paper:
  >[Fully Convolutional Networks for Semantic Segmentation CVPR2015](https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf)
-![FCN8s training curves](D:\pycodes\MLProj2\result)
+ 
+ 
+![FCN8s training curves](D:/pycodes/MLProj2/result)
