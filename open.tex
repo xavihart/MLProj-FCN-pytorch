@@ -71,20 +71,21 @@ xavihart@sjtu.edu.cn   \\ https://github.com/xavihart}
 \caption{Key components and their detailed implementations}
 \label{table}
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{|p{75pt}|p{125pt}|}
+\begin{tabular}{|p{85pt}|p{125pt}|}
 \hline
-Key component & Implementation \\
+Details & Implementation \\
 \hline
 Dataset    &        PASCAL-VOC2012             \\
 Dataloader &   torch.utils.data.DataLoader        \\
 Feature extract   &      VGG16               \\
 upsampling   &       torch.nn.ConvTranspose2d               \\
 Loss function   &        torch.nn.NLLLoss             \\
-Optimizer   &           RMSprop          \\
+Optimizer   &           RMSprop / Adam       \\
 Testing metrics  &      AP/mAP/mIoU               \\
 Epoch number & 300 \\
 Learning rate & first 20 epoch: $10^{-4}$ then $10^{-6}$ \\
  Devices            &      NVIDIA GTX 1080Ti $\times4$              \\
+ Time consumed(mean)   &    4.89 hrs   \\
 
 \hline
 
@@ -107,7 +108,7 @@ The implementation are made up of three main parts: preparing datasets, building
 I use cv2.INTER-LINEAR and cv.INTER-NEAREST to resize the image and ground truth label respectively.Some example figrues can be referred to in 
 Fig .2.
 \begin{figure}
-  \centerline{\includegraphics[scale=0.5]{vocexp.pdf}}
+  \centerline{\includegraphics[scale=0.6]{vocexp.pdf}}
   \caption{Some example figures in VOC2012
   segmentation task and their segmentation ground truth.\label{fig2}}
   \end{figure}
@@ -141,18 +142,79 @@ respectively. s represents for the total number of pixels and c is the class num
 
 
 \subsection{Training process}
-According to different kind of mistakes, I spent a lot of time training 
+According to different kinds of mistakes, I spent a lot of time training the FCN8s.The training loss image can be found in Fig .3.
+FCN for semantic segmentation task is harder to train compared with traditional image 
+classification task. One obvious reason is that 
+the size of dataset of the former is much smaller compared with that of the latter.(less than 10\%)
+
+Figure 4 shows the curves of vgg16 I once trained for voc2012 image classification task.
 
 
 
+\subsection{Testing process}
+The test accuracies based on three metrics are presetnted in Table 2. I think the result should be better if I choice a better Loss
+function or training in more proper learning rate.
 
+Fig .5 shows some examples of the segmentation predictions.
 
+\begin{figure}
+  \centerline{\includegraphics[scale=0.65]{final_curves2.pdf}}
+  \caption{Training loss curve of FCN8s in VOC2012 semantic segmentation task\label{fig2}. Left curve utilized RMSprop optimizer, right
+  curve utilized Adam.}
+  \end{figure}
 
+  
+\begin{figure}
+  \centerline{\includegraphics[scale=0.5]{curve2.jpg}}
+  \caption{Training curve of VGG16 I once trained on VOC2012 image classification task.\label{fig2}}
+  \end{figure}
+
+  \begin{table}
+    \centering
+  \caption{Testing metrics}
+  \label{table}
+  \setlength{\tabcolsep}{3pt}
+
+  \begin{tabular}{|p{80pt}|p{80pt}|p{80pt}|}  
+    \hline
+    Testing Metrics   &  testing set(\%)  & training set(\%)\\
+    \hline
+    AP              &    74.75   &86.58 \\
+    mAP                  & 57.71 &74.30\\
+    mIoU              &    50.05  &69.30  \\
+    \hline
+ 
+ 
+  
+
+  \end{tabular}
+  \label{tab1}
+  \end{table}
+
+  \begin{figure}
+    \centerline{\includegraphics[scale=0.32]{exp_final.pdf}}
+    \caption{Some example predictios made by FCN8s trained in 
+    this report, together with their raw image and ground truth.We can see from these predictions 
+    that there are still somewhere the models did not study well.}
+    \end{figure}
+\section{CONCLUSION}
+    FCN lead the deep learning model into the field of semantic segmentation. Many models are proposed in the next years which can 
+    reach a better performence including: SegNet \cite{4}, Bayesain SegNet \cite{5}, DeepLab \cite{6} and so on. In the implementation process of FCN, I found 
+    it important to fully understand each working part of the model before beginning to build it. It is also always useful to turn to
+    other model trainer's experience for help.
+\section{THANKS}
+Here I would like to give my thanks to Mr Zhang, who has given a integrated and patient teaching in class about basic machine learning 
+and deep learning knowledge.  I would also give my thanks to the TA who helpfully offered me necessary aid.
 
 
 \begin{thebibliography}{00}
 \bibitem{1} Long, Jonathan, Evan Shelhamer, and Trevor Darrell. "Fully convolutional networks for semantic segmentation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2015.
 \bibitem{2} Simonyan, Karen, and Andrew Zisserman. "Very deep convolutional networks for large-scale image recognition." arXiv preprint arXiv:1409.1556 (2014).
 \bibitem{3} Deng, Jia, et al. "Imagenet: A large-scale hierarchical image database." 2009 IEEE conference on computer vision and pattern recognition. Ieee, 2009.
+
+\bibitem{4}Badrinarayanan, Vijay, Alex Kendall, and Roberto Cipolla. "Segnet: A deep convolutional encoder-decoder architecture for image segmentation." IEEE transactions on pattern analysis and machine intelligence 39.12 (2017): 2481-2495.
+\bibitem{5}Chen, Liang-Chieh, et al. "Deeplab: Semantic image segmentation with deep convolutional nets, atrous convolution, and fully connected crfs." IEEE transactions on pattern analysis and machine intelligence 40.4 (2017): 834-848.
+\bibitem{6}Kendall, Alex, Vijay Badrinarayanan, and Roberto Cipolla. "Bayesian segnet: Model uncertainty in deep convolutional encoder-decoder architectures for scene understanding." arXiv preprint arXiv:1511.02680 (2015).
 \end{thebibliography}
 \end{document}
+
