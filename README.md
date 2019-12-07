@@ -13,7 +13,7 @@
  
  
  >Some examples are as follows
- ![###](https://raw.githubusercontent.com/xavihart/MLProj-FCN_IMP/master/final_exp.PDF)
+ ![###](https://raw.githubusercontent.com/xavihart/MLProj-FCN_IMP/master/exp_final.pdf)
  
  
  >Not quite good. The model seems still has problems.
