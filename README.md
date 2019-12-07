@@ -13,7 +13,7 @@
  
  
  >Some examples are as follows
- ![More examples](https://github.com/xavihart/MLProj-FCN-pytorch/blob/master/exp_final.pdf)
+ ![More examples](https://github.com/xavihart/MLProj-FCN-pytorch/blob/master/MLProj2/exp.PNG)
  
  
  >Not quite good. The model seems still has problems.
