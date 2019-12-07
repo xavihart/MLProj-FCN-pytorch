@@ -8,12 +8,12 @@
  >It should be noted that I use the CrossEntropy2d as the loss function as [fcn_pytorch](https://github.com/xavihart/fcn_pytorch), it may not be the best choice though.
  
  
- ![FCN8s training curves](https://raw.githubusercontent.com/xavihart/MLProj-FCN_IMP/master/curve.jpg)
+ ![FCN8s training curves](https://raw.githubusercontent.com/xavihart/MLProj-FCN-pytorch/master/curve.jpg)
  
  
  
  >Some examples are as follows
- ![###](https://raw.githubusercontent.com/xavihart/MLProj-FCN_IMP/master/exp_final.pdf)
+ ![###](https://raw.githubusercontent.com/xavihart/MLProj-FCN-pytorch/master/exp_final.pdf)
  
  
  >Not quite good. The model seems still has problems.
