@@ -9,3 +9,12 @@
  
  
  ![FCN8s training curves](https://raw.githubusercontent.com/xavihart/MLProj-FCN_IMP/master/curve.jpg)
+ 
+ 
+ 
+ >Some examples are as follows
+ ![###](https://raw.githubusercontent.com/xavihart/MLProj-FCN_IMP/master/final_exp.PDF)
+ 
+ 
+ >Not quite good. The model seems still has problems.
+ >the tempt acc can be referred to in the open.PDF
