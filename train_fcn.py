@@ -7,7 +7,7 @@ import numpy as np
 import torchvision
 import models
 import voc_base
-from torch.optim import Adam, SGD
+from torch.optim import Adam, SGD, RMSprop
 from argparse import ArgumentParser
 import tool_lib
 import torch.nn as nn
@@ -16,6 +16,17 @@ import  matplotlib.pylab as plt
 import time
 
 time_start = time.time()
+
+
+class CrossEntropyLoss2d(nn.Module):
+
+    def __init__(self, weight=None, size_average=True):
+        super(CrossEntropyLoss2d, self).__init__()
+
+        self.nll_loss = nn.NLLLoss2d(weight, size_average)
+
+    def forward(self, inputs, targets):
+        return self.nll_loss(F.log_softmax(inputs, dim=1), targets)
 
 
 def cross_entropy2d(input, target, weight=None, size_average=True):
@@ -38,7 +49,7 @@ def cross_entropy2d(input, target, weight=None, size_average=True):
 
 
 parser = ArgumentParser()
-parser.add_argument('-bs', '--batch_size', type=int, default=10, help="batch size of the data")
+parser.add_argument('-bs', '--batch_size', type=int, default=2, help="batch size of the data")
 parser.add_argument('-e', '--epochs', type=int, default=300, help='epoch of the train')
 parser.add_argument('-c', '--n_class', type=int, default=21, help='the classes of the dataset')
 parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3, help='learning rate')
@@ -61,14 +72,15 @@ train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, sh
 val_data = voc_base.VOC2012ClassSeg(root=data_pth, split='val', transform=True)
 val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=5)
 
-
 vgg_model = models.VGGNET(requires_grad=True)
 fcn_net = models.FCN8s(pretrained_net=vgg_model, n_class=n_class)
 
 
-optimizer = Adam(fcn_net.parameters())
+optimizer = RMSprop(fcn_net.parameters(), lr=1e-4, momentum=0, weight_decay=1e-5)
 epoch_loss_list = []
 epoch_test_loss_list = []
+criteron = nn.NLLLoss()
+
 
 def train(epoch):
     fcn_net.to(device)
@@ -82,7 +94,8 @@ def train(epoch):
         img = img.to(device)
         lbl = lbl.to(device)
         out = fcn_net(img)
-        loss = cross_entropy2d(out, lbl, )
+        #loss = criteron(out, lbl)
+        loss = criteron(F.log_softmax(out, dim=1), lbl)
         loss /= N
         #print("test1", tot_loss / len(train_loader))                        #flag1
         tot_loss += loss.data
@@ -110,11 +123,11 @@ def test(epoch):
         img = img.to(device)
         lbl = lbl.to(device)
         out = fcn_net(img)
-        loss = criterion(out, lbl)
+        loss = criteron(F.log_softmax(out, dim=1), lbl)
         loss /= N
-        if loss >= 50:
-            num -= 1
-            continue
+        #if loss >= 50:
+         #   num -= 1
+          #  continue
         tot_loss += loss.data
         if btch_index % 10 == 0:
             print("testing process in epoch%d, loss:{%f}"%(epoch, loss))
