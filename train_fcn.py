@@ -152,22 +152,3 @@ if __name__ == "__main__":
     plt.savefig('./result_new/curve.jpg')
     plt.show()
     print("time comsumed:", time.time() - time_start)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
