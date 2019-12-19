@@ -7,7 +7,7 @@ import torch
 from torch.utils import data
 import cv2 as cv
 import random
-
+# A universal dataloader of VOC2012, getting from https://github.com/xavihart/fcn_pytorch;
 class VOCClassSegBase(data.Dataset):
     class_names = np.array([
         'background',
